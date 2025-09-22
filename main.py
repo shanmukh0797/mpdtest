@@ -1,38 +1,34 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 import os
 import glob
+import mimetypes
 
 # Helper function to get base URL from request
 def get_base_url(request: Request) -> str:
     """Extract base URL from the request"""
     return f"{request.url.scheme}://{request.url.netloc}"
 
+# Custom static file handler that properly handles MPD files
+class CustomStaticFiles(StaticFiles):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        
+        # Check if the file is an MPD file and set correct MIME type
+        if hasattr(response, 'path') and response.path and response.path.endswith('.mpd'):
+            response.media_type = "application/dash+xml"
+        
+        return response
+
 app = FastAPI(title="Video Player", description="DASH Video Player with MPD files")
 
-# Custom endpoint for MPD files to ensure correct MIME type
-@app.get("/videos/{video_folder}/{mpd_file}")
-async def serve_mpd_file(video_folder: str, mpd_file: str):
-    """Serve MPD files with correct MIME type for browser display"""
-    file_path = os.path.join("videos", video_folder, mpd_file)
-    
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    # Check if it's an MPD file
-    if mpd_file.endswith('.mpd'):
-        return FileResponse(
-            path=file_path,
-            media_type="application/dash+xml",
-            filename=mpd_file
-        )
-    else:
-        # For other files, use default behavior
-        return FileResponse(path=file_path)
-
-# Mount static files to serve other video files (segments, etc.)
-app.mount("/videos", StaticFiles(directory="videos"), name="videos")
+# Mount static files with custom handler that properly handles MPD files
+app.mount("/videos", CustomStaticFiles(directory="videos"), name="videos")
 
 @app.get("/", response_class=HTMLResponse)
 async def render_videos(request: Request):
