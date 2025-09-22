@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 import os
 import glob
@@ -11,7 +11,27 @@ def get_base_url(request: Request) -> str:
 
 app = FastAPI(title="Video Player", description="DASH Video Player with MPD files")
 
-# Mount static files to serve video files
+# Custom endpoint for MPD files to ensure correct MIME type
+@app.get("/videos/{video_folder}/{mpd_file}")
+async def serve_mpd_file(video_folder: str, mpd_file: str):
+    """Serve MPD files with correct MIME type for browser display"""
+    file_path = os.path.join("videos", video_folder, mpd_file)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Check if it's an MPD file
+    if mpd_file.endswith('.mpd'):
+        return FileResponse(
+            path=file_path,
+            media_type="application/dash+xml",
+            filename=mpd_file
+        )
+    else:
+        # For other files, use default behavior
+        return FileResponse(path=file_path)
+
+# Mount static files to serve other video files (segments, etc.)
 app.mount("/videos", StaticFiles(directory="videos"), name="videos")
 
 @app.get("/", response_class=HTMLResponse)
