@@ -21,12 +21,13 @@ class CustomStaticFiles(StaticFiles):
         
         # Check if the file is an MPD file and set correct MIME type
         if hasattr(response, 'path') and response.path and response.path.endswith('.mpd'):
-            response.media_type = "application/dash+xml"
-            # Force inline display instead of download
-            response.headers["Content-Disposition"] = "inline"
-            # Add additional headers to help with browser display
+            response.media_type = "text/plain"
+            # Match Bitmovin's exact configuration
+            response.headers["Content-Type"] = "text/plain; charset=utf-8"
             response.headers["Cache-Control"] = "public, max-age=3600"
-            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Methods"] = "GET,POST,HEAD"
+            response.headers["Access-Control-Allow-Headers"] = "*"
         
         return response
 
@@ -46,11 +47,13 @@ async def serve_mpd_file(video_folder: str, mpd_file: str):
     
     return FileResponse(
         path=file_path,
-        media_type="application/dash+xml",
+        media_type="text/plain",
         headers={
-            "Content-Disposition": "inline",
+            "Content-Type": "text/plain; charset=utf-8",
             "Cache-Control": "public, max-age=3600",
-            "X-Content-Type-Options": "nosniff"
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET,POST,HEAD",
+            "Access-Control-Allow-Headers": "*"
         }
     )
 
