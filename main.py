@@ -22,12 +22,39 @@ class CustomStaticFiles(StaticFiles):
         # Check if the file is an MPD file and set correct MIME type
         if hasattr(response, 'path') and response.path and response.path.endswith('.mpd'):
             response.media_type = "application/dash+xml"
+            # Force inline display instead of download
+            response.headers["Content-Disposition"] = "inline"
+            # Add additional headers to help with browser display
+            response.headers["Cache-Control"] = "public, max-age=3600"
+            response.headers["X-Content-Type-Options"] = "nosniff"
         
         return response
 
 app = FastAPI(title="Video Player", description="DASH Video Player with MPD files")
 
-# Mount static files with custom handler that properly handles MPD files
+# Custom endpoint specifically for MPD files to ensure proper headers
+@app.get("/videos/{video_folder}/{mpd_file}")
+async def serve_mpd_file(video_folder: str, mpd_file: str):
+    """Serve MPD files with correct MIME type and headers for browser display"""
+    if not mpd_file.endswith('.mpd'):
+        raise HTTPException(status_code=404, detail="Not an MPD file")
+    
+    file_path = os.path.join("videos", video_folder, mpd_file)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    return FileResponse(
+        path=file_path,
+        media_type="application/dash+xml",
+        headers={
+            "Content-Disposition": "inline",
+            "Cache-Control": "public, max-age=3600",
+            "X-Content-Type-Options": "nosniff"
+        }
+    )
+
+# Mount static files for other video files (segments, etc.)
 app.mount("/videos", CustomStaticFiles(directory="videos"), name="videos")
 
 @app.get("/", response_class=HTMLResponse)
