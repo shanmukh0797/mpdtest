@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<MPD id="d983a662-3aa5-4382-886e-08446f71b25f" profiles="urn:mpeg:dash:profile:isoff-main:2011" type="static" 
+     availabilityStartTime="2025-09-22T21:55:12.000Z" publishTime="2025-09-22T21:55:12.000Z" 
+     mediaPresentationDuration="P0Y0M0DT0H0M37.271S" minBufferTime="P0Y0M0DT0H0M1.000S" 
+     bitmovin:version="1.6.0" xmlns:ns2="http://www.w3.org/1999/xlink" 
+     xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:bitmovin="http://www.bitmovin.net/mpd/2015">
+    <Period>
+        <AdaptationSet mimeType="video/mp4" codecs="avc1.42c00d">
+            <SegmentTemplate media="video/$RepresentationID$/dash/segment_$Number$.m4s" 
+                            initialization="video/$RepresentationID$/dash/init.mp4" 
+                            duration="100000" startNumber="1" timescale="25000"/>
+            <Representation id="360_800000" bandwidth="800000" width="360" height="640" frameRate="25.0"/>
+            <Representation id="540_1200000" bandwidth="1200000" width="540" height="960" frameRate="25.0"/>
+            <Representation id="720_2400000" bandwidth="2400000" width="720" height="1280" frameRate="25.0"/>
+        </AdaptationSet>
+
+    </Period>
+</MPD>
