@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<MPD id="d87ed4b7-9b78-4471-8cec-d4fcc2b90f5f" profiles="urn:mpeg:dash:profile:isoff-main:2011" type="static" 
-     availabilityStartTime="2025-09-22T18:24:14.000Z" publishTime="2025-09-22T18:24:14.000Z" 
-     mediaPresentationDuration="P0Y0M0DT0H0M36.000S" minBufferTime="P0Y0M0DT0H0M1.000S" 
+<MPD id="069144b7-f5d9-4a83-b9c8-6cc6c2667448" profiles="urn:mpeg:dash:profile:isoff-main:2011" type="static" 
+     availabilityStartTime="2025-09-22T19:43:52.000Z" publishTime="2025-09-22T19:43:52.000Z" 
+     mediaPresentationDuration="P0Y0M0DT0H0M35.419S" minBufferTime="P0Y0M0DT0H0M1.000S" 
      bitmovin:version="1.6.0" xmlns:ns2="http://www.w3.org/1999/xlink" 
      xmlns="urn:mpeg:dash:schema:mpd:2011" xmlns:bitmovin="http://www.bitmovin.net/mpd/2015">
     <Period>
@@ -9,9 +9,9 @@
             <SegmentTemplate media="video/$RepresentationID$/dash/segment_$Number$.m4s" 
                             initialization="video/$RepresentationID$/dash/init.mp4" 
                             duration="100000" startNumber="1" timescale="25000"/>
-            <Representation id="360_800000" bandwidth="800000" width="640" height="360" frameRate="25"/>
-            <Representation id="540_1200000" bandwidth="1200000" width="960" height="540" frameRate="25"/>
-            <Representation id="720_2400000" bandwidth="2400000" width="1280" height="720" frameRate="25"/>
+            <Representation id="360_800000" bandwidth="800000" width="640" height="360" frameRate="25.0"/>
+            <Representation id="540_1200000" bandwidth="1200000" width="960" height="540" frameRate="25.0"/>
+            <Representation id="720_2400000" bandwidth="2400000" width="1280" height="720" frameRate="25.0"/>
         </AdaptationSet>
 
     </Period>

@@ -1,63 +1,40 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 import os
 import glob
 
+# Helper function to get base URL from request
+def get_base_url(request: Request) -> str:
+    """Extract base URL from the request"""
+    return f"{request.url.scheme}://{request.url.netloc}"
+
 app = FastAPI(title="Video Player", description="DASH Video Player with MPD files")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
-    allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
-)
-
-# Mount static files to serve video files with cache control
-from fastapi.responses import FileResponse
-from fastapi import HTTPException
-
-@app.get("/videos/{video_name}/{mpd_file}")
-async def serve_mpd(video_name: str, mpd_file: str):
-    """Serve MPD files with proper headers to prevent caching issues"""
-    file_path = f"videos/{video_name}/{mpd_file}"
-    if os.path.exists(file_path):
-        return FileResponse(
-            file_path,
-            media_type="application/dash+xml",
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        )
-    else:
-        raise HTTPException(status_code=404, detail="MPD file not found")
 
 # Mount static files to serve video files
 app.mount("/videos", StaticFiles(directory="videos"), name="videos")
 
 @app.get("/", response_class=HTMLResponse)
-async def render_videos():
+async def render_videos(request: Request):
     """Render all videos from the videos folder with their master MPD files"""
     
-    # Find all video directories
-    video_dirs = [d for d in os.listdir("videos") if os.path.isdir(os.path.join("videos", d))]
+    # Get base URL from request
+    base_url = get_base_url(request)
     
-    # Find master MPD files in each video directory
+    # Find all video directories
+    video_dirs = [d for d in os.listdir("videos") if os.path.isdir(os.path.join("videos", d)) and d != "export"]
+    
+    # Find only master MPD files in each video directory
     videos_data = []
     for video_dir in video_dirs:
         video_path = os.path.join("videos", video_dir)
-        # Look for master MPD file (matches directory name)
+        # Look for master MPD file that matches the directory name
         master_mpd = os.path.join(video_path, f"{video_dir}.mpd")
         
         if os.path.exists(master_mpd):
             videos_data.append({
                 "name": video_dir,
-                "mpd_file": f"http://127.0.0.1:8000/videos/{video_dir}/{video_dir}.mpd",
+                "mpd_file": f"{base_url}/videos/{video_dir}/{video_dir}.mpd",
                 "display_name": video_dir.replace("_", " ").title()
             })
     
@@ -167,7 +144,7 @@ async def render_videos():
                     <video id="player{i}" class="video-player" controls preload="none">
                         Your browser does not support the video tag.
                     </video>
-                    <button class="play-button" onclick="loadVideo({i}, '{video['mpd_file']}?t=' + Date.now())">
+                    <button class="play-button" onclick="loadVideo({i}, '{video['mpd_file']}')">
                         ▶ Play Video
                     </button>
                     <div class="mpd-info">MPD: {video['mpd_file']}</div>
@@ -183,61 +160,30 @@ async def render_videos():
                 const video = document.getElementById(`player${playerId}`);
                 const button = event.target;
                 
-                console.log('Loading video:', mpdUrl);
-                
                 // Initialize DASH player
                 if (video.dashPlayer) {
                     video.dashPlayer.destroy();
                 }
                 
-                try {
-                    video.dashPlayer = dashjs.MediaPlayer().create();
-                    
-                    // Configure DASH player
-                    video.dashPlayer.updateSettings({
-                        'debug': {
-                            'logLevel': dashjs.Debug.LOG_LEVEL_DEBUG
-                        }
-                    });
-                    
-                    video.dashPlayer.initialize(video, mpdUrl, true);
-                    
-                    // Update button text
-                    button.textContent = '🔄 Loading...';
-                    button.disabled = true;
-                    
-                    // Enable button when video is ready
-                    video.addEventListener('loadeddata', () => {
-                        console.log('Video loaded successfully');
-                        button.textContent = '▶ Playing';
-                        button.disabled = false;
-                    });
-                    
-                    // Handle successful load
-                    video.dashPlayer.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-                        console.log('Stream initialized');
-                    });
-                    
-                    // Handle errors
-                    video.dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                        console.error('DASH Error:', e);
-                        button.textContent = '❌ Error - Check Console';
-                        button.disabled = false;
-                    });
-                    
-                    // Handle network errors
-                    video.dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                        if (e.error && e.error.code === dashjs.MediaPlayer.events.ERROR_CODES.MANIFEST_LOAD_ERROR) {
-                            console.error('Manifest load error:', e);
-                            button.textContent = '❌ Manifest Error';
-                        }
-                    });
-                    
-                } catch (error) {
-                    console.error('Failed to initialize DASH player:', error);
-                    button.textContent = '❌ Init Error';
+                video.dashPlayer = dashjs.MediaPlayer().create();
+                video.dashPlayer.initialize(video, mpdUrl, true);
+                
+                // Update button text
+                button.textContent = '🔄 Loading...';
+                button.disabled = true;
+                
+                // Enable button when video is ready
+                video.addEventListener('loadeddata', () => {
+                    button.textContent = '▶ Playing';
                     button.disabled = false;
-                }
+                });
+                
+                // Handle errors
+                video.dashPlayer.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                    console.error('DASH Error:', e);
+                    button.textContent = '❌ Error';
+                    button.disabled = false;
+                });
             }
         </script>
     </body>
@@ -246,30 +192,24 @@ async def render_videos():
     
     return HTMLResponse(content=html_content)
 
-@app.get("/test-mpd/{video_name}")
-async def test_mpd(video_name: str):
-    """Test endpoint to check if MPD file is accessible"""
-    mpd_path = f"videos/{video_name}/{video_name}.mpd"
-    if os.path.exists(mpd_path):
-        return {"status": "exists", "path": mpd_path, "url": f"http://127.0.0.1:8000/videos/{video_name}/{video_name}.mpd"}
-    else:
-        return {"status": "not_found", "path": mpd_path}
-
 @app.get("/api/videos")
-async def get_videos_list():
-    """API endpoint to get list of all available videos and their master MPD files"""
+async def get_videos_list(request: Request):
+    """API endpoint to get list of all available videos and their MPD files"""
+    # Get base URL from request
+    base_url = get_base_url(request)
+    
     video_dirs = [d for d in os.listdir("videos") if os.path.isdir(os.path.join("videos", d)) and d != "export"]
     
     videos_data = []
     for video_dir in video_dirs:
         video_path = os.path.join("videos", video_dir)
-        # Look for master MPD file (matches directory name)
+        # Look for master MPD file that matches the directory name
         master_mpd = os.path.join(video_path, f"{video_dir}.mpd")
         
         if os.path.exists(master_mpd):
             videos_data.append({
                 "name": video_dir,
-                "mpd_file": f"http://127.0.0.1:8000/videos/{video_dir}/{video_dir}.mpd",
+                "mpd_file": f"{base_url}/videos/{video_dir}/{video_dir}.mpd",
                 "display_name": video_dir.replace("_", " ").title()
             })
     
