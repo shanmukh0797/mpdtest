@@ -52,6 +52,15 @@ class CustomStaticFiles(StaticFiles):
 
 app = FastAPI(title="Video Player", description="DASH Video Player with MPD files")
 
+# Add CORS middleware to handle preflight requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for video segments
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
 # Custom endpoint specifically for MPD files to ensure proper headers
 @app.get("/videos/{video_folder}/{mpd_file}")
 async def serve_mpd_file(video_folder: str, mpd_file: str):
