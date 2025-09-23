@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import Response
 import os
 import glob
@@ -19,15 +20,33 @@ class CustomStaticFiles(StaticFiles):
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)
         
-        # Check if the file is an MPD file and set correct MIME type
-        if hasattr(response, 'path') and response.path and response.path.endswith('.mpd'):
-            response.media_type = "text/plain"
-            # Match Bitmovin's exact configuration
-            response.headers["Content-Type"] = "text/plain; charset=utf-8"
-            response.headers["Cache-Control"] = "public, max-age=3600"
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Methods"] = "GET,POST,HEAD"
-            response.headers["Access-Control-Allow-Headers"] = "*"
+        # Add CORS headers for all video-related files
+        if hasattr(response, 'path') and response.path:
+            file_path = response.path
+            
+            # Check if the file is an MPD file and set correct MIME type
+            if file_path.endswith('.mpd'):
+                response.media_type = "text/plain"
+                # Match Bitmovin's exact configuration
+                response.headers["Content-Type"] = "text/plain; charset=utf-8"
+                response.headers["Cache-Control"] = "public, max-age=3600"
+                response.headers["Access-Control-Allow-Origin"] = "*"
+                response.headers["Access-Control-Allow-Methods"] = "GET,POST,HEAD"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+            
+            # Add CORS headers for video segment files (.m4s)
+            elif file_path.endswith('.m4s'):
+                response.headers["Access-Control-Allow-Origin"] = "*"
+                response.headers["Access-Control-Allow-Methods"] = "GET,HEAD,OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                response.headers["Cache-Control"] = "public, max-age=86400"  # Cache segments longer
+            
+            # Add CORS headers for MP4 files (init segments)
+            elif file_path.endswith('.mp4'):
+                response.headers["Access-Control-Allow-Origin"] = "*"
+                response.headers["Access-Control-Allow-Methods"] = "GET,HEAD,OPTIONS"
+                response.headers["Access-Control-Allow-Headers"] = "*"
+                response.headers["Cache-Control"] = "public, max-age=86400"
         
         return response
 
